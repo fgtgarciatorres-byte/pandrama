@@ -6,7 +6,7 @@
     <style>
         body { background-color: #1a1a1a; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
         #game-container { position: relative; border: 4px solid #ffd700; }
-        canvas { display: block; background-color: #000; image-rendering: pixelated; } /* Para que no se vea borroso */
+        canvas { display: block; background-color: #000; image-rendering: pixelated; }
     </style>
 </head>
 <body>
@@ -15,21 +15,31 @@
     <div id="game-container">
         <canvas id="gameCanvas" width="800" height="400"></canvas>
     </div>
-    <p>Usa las <b>Flechas</b> para correr y <b>Espacio</b> para atacar.</p>
+    <p>Usa las <b>Flechas Izquierda/Derecha</b> para correr y <b>Espacio</b> para atacar.</p>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // Carga de imágenes
+        // --- CARGA DE IMÁGENES ---
+        // Cargar el fondo
+        const backgroundImage = new Image();
+        backgroundImage.src = 'fondo.png'; // IMPORTANTE: El nombre debe coincidir exactamente
+
+        // Cargar el personaje
         const spriteSheet = new Image();
-        spriteSheet.src = 'panificador_run.png'; // Asegúrate de que el nombre sea exacto
+        spriteSheet.src = 'panificador_run.png';
+
+        // --- CONFIGURACIÓN ---
+        // Variables para el desplazamiento del fondo
+        const backgroundSpeed = 2; // Velocidad a la que se mueve el fondo
+        let backgroundX = 0; // Posición actual del fondo
 
         // Ajuste según tu hoja de sprites real
         const spriteConfig = {
-            frameWidth: 128,  // Ajusta este número según el ancho de UN solo frame en tu archivo
-            frameHeight: 128, // Ajusta este número según el alto
-            totalFrames: 6,   // Cuántos cuadros de movimiento tiene la fila de arriba
+            frameWidth: 128,  
+            frameHeight: 128, 
+            totalFrames: 6,   
             animSpeed: 8,
             currentFrame: 0,
             counter: 0
@@ -46,11 +56,29 @@
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
+        // --- ACTUALIZACIÓN DE LÓGICA ---
         function update() {
             player.isMoving = false;
+            
+            // Movimiento del jugador
             if (keys['ArrowRight']) { player.x += player.speed; player.dir = 1; player.isMoving = true; }
             if (keys['ArrowLeft']) { player.x -= player.speed; player.dir = -1; player.isMoving = true; }
 
+            // Lógica de desplazamiento del fondo
+            if (player.isMoving && player.dir === 1) {
+                backgroundX -= backgroundSpeed; // El fondo se mueve a la izquierda
+            } else if (player.isMoving && player.dir === -1) {
+                backgroundX += backgroundSpeed; // El fondo se mueve a la derecha
+            }
+
+            // Asegurarse de que el fondo se repita
+            if (backgroundX <= -backgroundImage.width) {
+                backgroundX = 0;
+            } else if (backgroundX > 0) {
+                backgroundX = -backgroundImage.width;
+            }
+
+            // Animación del personaje
             if (player.isMoving) {
                 spriteConfig.counter++;
                 if (spriteConfig.counter >= spriteConfig.animSpeed) {
@@ -62,14 +90,15 @@
             }
         }
 
+        // --- DIBUJADO ---
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Dibujar suelo
-            ctx.fillStyle = "#333";
-            ctx.fillRect(0, 350, canvas.width, 50);
+            // Dibujar el fondo (se dibuja dos veces para el bucle)
+            ctx.drawImage(backgroundImage, backgroundX, 0);
+            ctx.drawImage(backgroundImage, backgroundX + backgroundImage.width, 0);
 
-            // Dibujar Sprite
+            // Dibujar Sprite del jugador
             const sx = spriteConfig.currentFrame * spriteConfig.frameWidth;
             
             ctx.save();
@@ -82,13 +111,27 @@
             ctx.restore();
         }
 
+        // --- BUCLE PRINCIPAL ---
         function main() {
             update();
             draw();
             requestAnimationFrame(main);
         }
 
-        spriteSheet.onload = () => main();
+        // Iniciar cuando las imágenes estén cargadas
+        // Necesitamos asegurarnos de que ambas imágenes se carguen antes de empezar
+        let loadedImages = 0;
+        const totalImages = 2;
+
+        const onImageLoad = () => {
+            loadedImages++;
+            if (loadedImages === totalImages) {
+                main();
+            }
+        };
+
+        backgroundImage.onload = onImageLoad;
+        spriteSheet.onload = onImageLoad;
     </script>
 </body>
 </html>
