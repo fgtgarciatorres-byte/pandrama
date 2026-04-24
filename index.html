@@ -2,102 +2,82 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Telenovela Live Prototype</title>
+<title>Telenovela Live V2</title>
 <style>
-  body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #0d0f1a;
-    color: white;
-    display: flex;
-    height: 100vh;
-  }
+body {
+  margin: 0;
+  font-family: Arial;
+  background: #0d0f1a;
+  color: white;
+}
 
-  .container {
-    display: grid;
-    grid-template-columns: 200px 1fr 300px;
-    width: 100%;
-  }
+.container {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  height: 100vh;
+}
 
-  /* INVENTARIO */
-  .left {
-    background: #111;
-    padding: 10px;
-    border-right: 2px solid #222;
-  }
+/* ESCENA */
+.scene {
+  position: relative;
+  background: #1a1f2e;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+}
 
-  .item {
-    background: #1a1a1a;
-    padding: 8px;
-    margin: 5px 0;
-    cursor: pointer;
-  }
+.character {
+  text-align: center;
+  transition: transform 0.2s;
+}
 
-  /* ESCENARIO */
-  .center {
-    position: relative;
-    background: url('https://picsum.photos/800/600?blur=3') center/cover;
-  }
+.active {
+  transform: scale(1.2);
+  filter: drop-shadow(0 0 10px cyan);
+}
 
-  .character {
-    position: absolute;
-    bottom: 50px;
-    width: 150px;
-    text-align: center;
-    transition: all 0.3s ease;
-  }
+.pose {
+  font-size: 80px;
+}
 
-  #charA { left: 20%; }
-  #charB { right: 20%; }
+/* SUBTÍTULOS */
+.subtitles {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background: rgba(0,0,0,0.7);
+  padding: 10px;
+}
 
-  .pose {
-    font-size: 60px;
-  }
+.lineA { color: #00d4ff; }
+.lineB { color: #ff4d6d; }
 
-  .subtitle {
-    position: absolute;
-    bottom: 10px;
-    width: 100%;
-    text-align: center;
-    font-size: 20px;
-    background: rgba(0,0,0,0.6);
-    padding: 10px;
-  }
+/* PANEL */
+.panel {
+  background: #111;
+  padding: 15px;
+}
 
-  /* PANEL */
-  .right {
-    background: #111;
-    padding: 10px;
-    border-left: 2px solid #222;
-  }
+button {
+  margin: 5px;
+  padding: 10px;
+  cursor: pointer;
+}
 
-  button {
-    margin: 5px;
-    padding: 10px;
-    cursor: pointer;
-  }
-
-  input {
-    width: 100%;
-    padding: 10px;
-    margin-top: 10px;
-  }
-
+input {
+  width: 100%;
+  padding: 10px;
+  margin-top: 10px;
+}
 </style>
 </head>
 <body>
 
 <div class="container">
 
-  <!-- INVENTARIO -->
-  <div class="left">
-    <h3>Inventario</h3>
-    <div class="item" onclick="effect('🍇')">Uvas</div>
-    <div class="item" onclick="effect('👜')">Bolso G</div>
-  </div>
+  <!-- ESCENA -->
+  <div class="scene">
 
-  <!-- ESCENARIO -->
-  <div class="center">
     <div id="charA" class="character">
       <div class="pose" id="poseA">🙂</div>
       <div>Jugador A</div>
@@ -108,20 +88,17 @@
       <div>Jugador B</div>
     </div>
 
-    <div id="subtitle" class="subtitle">
-      Esperando drama...
+    <div class="subtitles">
+      <div id="lineA" class="lineA">...</div>
+      <div id="lineB" class="lineB">...</div>
     </div>
+
   </div>
 
   <!-- PANEL -->
-  <div class="right">
-    <h3>Control</h3>
+  <div class="panel">
 
-    <b>Jugador:</b>
-    <select id="player">
-      <option value="A">Jugador A</option>
-      <option value="B">Jugador B</option>
-    </select>
+    <h3>Turno: <span id="turn">A</span></h3>
 
     <h4>Poses</h4>
     <button onclick="setPose('🙂')">Neutral</button>
@@ -129,7 +106,7 @@
     <button onclick="setPose('😂')">Risa</button>
     <button onclick="setPose('😢')">Drama</button>
 
-    <input id="text" placeholder="Escribe tu frase dramática..." />
+    <input id="text" placeholder="Tu frase..." />
     <button onclick="send()">ENVIAR</button>
 
   </div>
@@ -138,40 +115,48 @@
 
 <script>
 
+let turn = "A";
+
 let state = {
   A: { pose: "🙂", text: "" },
   B: { pose: "😈", text: "" }
 };
 
 function setPose(pose) {
-  const player = document.getElementById("player").value;
-  state[player].pose = pose;
+  state[turn].pose = pose;
   render();
 }
 
 function send() {
-  const player = document.getElementById("player").value;
   const text = document.getElementById("text").value;
+  if (!text) return;
 
-  state[player].text = text;
+  state[turn].text = text;
 
-  render();
+  // alternar turno
+  turn = turn === "A" ? "B" : "A";
 
   document.getElementById("text").value = "";
-}
 
-function effect(icon) {
-  document.getElementById("subtitle").innerText += " " + icon;
+  render();
 }
 
 function render() {
+
   document.getElementById("poseA").innerText = state.A.pose;
   document.getElementById("poseB").innerText = state.B.pose;
 
-  // Última intervención domina
-  let lastText = state.A.text || state.B.text;
-  document.getElementById("subtitle").innerText = lastText || "Esperando drama...";
+  document.getElementById("lineA").innerText = "A: " + state.A.text;
+  document.getElementById("lineB").innerText = "B: " + state.B.text;
+
+  document.getElementById("turn").innerText = turn;
+
+  document.getElementById("charA").classList.toggle("active", turn === "A");
+  document.getElementById("charB").classList.toggle("active", turn === "B");
+
 }
+
+render();
 
 </script>
 
