@@ -1,164 +1,171 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>Telenovela Live V2</title>
-<style>
-body {
-  margin: 0;
-  font-family: Arial;
-  background: #0d0f1a;
-  color: white;
-}
-
-.container {
-  display: grid;
-  grid-template-columns: 1fr 300px;
-  height: 100vh;
-}
-
-/* ESCENA */
-.scene {
-  position: relative;
-  background: #1a1f2e;
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-}
-
-.character {
-  text-align: center;
-  transition: transform 0.2s;
-}
-
-.active {
-  transform: scale(1.2);
-  filter: drop-shadow(0 0 10px cyan);
-}
-
-.pose {
-  font-size: 80px;
-}
-
-/* SUBTÍTULOS */
-.subtitles {
-  position: absolute;
-  bottom: 0;
-  width: 100%;
-  background: rgba(0,0,0,0.7);
-  padding: 10px;
-}
-
-.lineA { color: #00d4ff; }
-.lineB { color: #ff4d6d; }
-
-/* PANEL */
-.panel {
-  background: #111;
-  padding: 15px;
-}
-
-button {
-  margin: 5px;
-  padding: 10px;
-  cursor: pointer;
-}
-
-input {
-  width: 100%;
-  padding: 10px;
-  margin-top: 10px;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>El Panificador: Pan-Runner 2026 - Movimiento</title>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        #game-container {
+            position: relative;
+            border: 4px solid #ffd700;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+        canvas {
+            display: block;
+            background-color: #000;
+        }
+        .level-info {
+            margin-bottom: 10px;
+            font-size: 20px;
+            text-transform: uppercase;
+        }
+    </style>
 </head>
 <body>
 
-<div class="container">
+    <div class="level-info">Nivel 1: Bulevar de los Neones (Prueba de Movimiento)</div>
 
-  <!-- ESCENA -->
-  <div class="scene">
-
-    <div id="charA" class="character">
-      <div class="pose" id="poseA">🙂</div>
-      <div>Jugador A</div>
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
     </div>
 
-    <div id="charB" class="character">
-      <div class="pose" id="poseB">😈</div>
-      <div>Jugador B</div>
-    </div>
+    <p>Usa las <b>Flechas Izquierda/Derecha</b> para correr.</p>
 
-    <div class="subtitles">
-      <div id="lineA" class="lineA">...</div>
-      <div id="lineB" class="lineB">...</div>
-    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-  </div>
+        // --- CONFIGURACIÓN DE ANIMACIÓN ---
+        
+        // 1. Cargar la imagen (Asegúrate de que 'panificador_run.png' esté en la misma carpeta)
+        const spriteSheet = new Image();
+        spriteSheet.src = 'panificador_run.png'; 
 
-  <!-- PANEL -->
-  <div class="panel">
+        // 2. Datos de la hoja de sprites
+        const spriteData = {
+            width: 60,      // Ancho de UN SOLO cuadro (frame) de animación
+            height: 80,     // Alto de UN SOLO cuadro (frame) de animación
+            frames: 6,      // Número total de cuadros en la secuencia de correr
+            speed: 10,       // Cuanto menor el número, más rápida la animación (ajusta esto)
+            currentFrame: 0,
+            counter: 0
+        };
 
-    <h3>Turno: <span id="turn">A</span></h3>
+        // --- ESTADO DEL JUGADOR ---
+        const player = {
+            x: 100,
+            y: 250, // Posición en el suelo
+            width: 60,  // Ancho para colisiones/dibujado (igual que el frame)
+            height: 80, // Alto para colisiones/dibujado (igual que el frame)
+            speed: 5,
+            isMoving: false,
+            direction: 1 // 1 para derecha, -1 para izquierda
+        };
 
-    <h4>Poses</h4>
-    <button onclick="setPose('🙂')">Neutral</button>
-    <button onclick="setPose('😡')">Ataque</button>
-    <button onclick="setPose('😂')">Risa</button>
-    <button onclick="setPose('😢')">Drama</button>
+        // --- CONTROLES ---
+        const keys = {};
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
 
-    <input id="text" placeholder="Tu frase..." />
-    <button onclick="send()">ENVIAR</button>
+        // --- BUCLE PRINCIPAL (LÓGICA Y DIBUJO) ---
 
-  </div>
+        function gameLoop() {
+            update();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
 
-</div>
+        // 1. Actualizar Lógica (Movimiento y Animación)
+        function update() {
+            player.isMoving = false;
 
-<script>
+            // Movimiento y dirección
+            if (keys['ArrowRight']) {
+                player.x += player.speed;
+                player.direction = 1;
+                player.isMoving = true;
+            }
+            if (keys['ArrowLeft']) {
+                player.x -= player.speed;
+                player.direction = -1;
+                player.isMoving = true;
+            }
 
-let turn = "A";
+            // Evitar que salga de la pantalla
+            if (player.x < 0) player.x = 0;
+            if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
 
-let state = {
-  A: { pose: "🙂", text: "" },
-  B: { pose: "😈", text: "" }
-};
+            // --- LÓGICA DE ANIMACIÓN ---
+            if (player.isMoving) {
+                spriteData.counter++;
+                // Cambiar de frame solo cuando el contador llegue a 'speed'
+                if (spriteData.counter >= spriteData.speed) {
+                    spriteData.currentFrame = (spriteData.currentFrame + 1) % spriteData.frames;
+                    spriteData.counter = 0; // Reiniciar contador
+                }
+            } else {
+                // Si está quieto, mostrar el primer frame (o el frame de 'idle')
+                spriteData.currentFrame = 0;
+                spriteData.counter = 0;
+            }
+        }
 
-function setPose(pose) {
-  state[turn].pose = pose;
-  render();
-}
+        // 2. Dibujar en el Canvas
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpiar pantalla
 
-function send() {
-  const text = document.getElementById("text").value;
-  if (!text) return;
+            // Dibujar suelo simple
+            ctx.fillStyle = "#333";
+            ctx.fillRect(0, 330, canvas.width, 70);
 
-  state[turn].text = text;
+            // --- DIBUJAR EL SPRITE ANIMADO ---
+            
+            // ctx.drawImage(imagen, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
+            // s = source (origen en la hoja), d = destination (destino en el canvas)
 
-  // alternar turno
-  turn = turn === "A" ? "B" : "A";
+            const sourceX = spriteData.currentFrame * spriteData.width; // Calcula qué cuadro cortar
+            const sourceY = 0; // Asumimos que es una sola fila
 
-  document.getElementById("text").value = "";
+            ctx.save(); // Guardar estado para la inversión de dirección
 
-  render();
-}
+            // Invertir la imagen si va a la izquierda
+            if (player.direction === -1) {
+                ctx.scale(-1, 1); // Invierte el eje X
+                // Ajustar la posición X para el dibujado invertido
+                ctx.drawImage(
+                    spriteSheet,
+                    sourceX, sourceY, spriteData.width, spriteData.height, // Qué cortar
+                    -player.x - player.width, player.y, player.width, player.height // Dónde dibujar (ajustado)
+                );
+            } else {
+                // Dibujado normal a la derecha
+                ctx.drawImage(
+                    spriteSheet,
+                    sourceX, sourceY, spriteData.width, spriteData.height, // Qué cortar
+                    player.x, player.y, player.width, player.height // Dónde dibujar
+                );
+            }
 
-function render() {
+            ctx.restore(); // Restaurar estado normal
+        }
 
-  document.getElementById("poseA").innerText = state.A.pose;
-  document.getElementById("poseB").innerText = state.B.pose;
+        // Iniciar el juego una vez que la imagen esté cargada
+        spriteSheet.onload = () => {
+            gameLoop();
+        };
 
-  document.getElementById("lineA").innerText = "A: " + state.A.text;
-  document.getElementById("lineB").innerText = "B: " + state.B.text;
-
-  document.getElementById("turn").innerText = turn;
-
-  document.getElementById("charA").classList.toggle("active", turn === "A");
-  document.getElementById("charB").classList.toggle("active", turn === "B");
-
-}
-
-render();
-
-</script>
-
+    </script>
 </body>
 </html>
