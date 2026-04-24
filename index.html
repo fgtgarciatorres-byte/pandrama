@@ -5,8 +5,8 @@
     <title>El Panificador: Pan-Runner 2026</title>
     <style>
         body { background-color: #1a1a1a; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        #game-container { position: relative; border: 4px solid #ffd700; }
-        canvas { display: block; background-color: #000; image-rendering: pixelated; }
+        #game-container { position: relative; border: 4px solid #ffd700; overflow: hidden;}
+        canvas { display: block; background-color: #000; image-rendering: pixelated; } /* Clave para pixel art nítido */
     </style>
 </head>
 <body>
@@ -15,70 +15,88 @@
     <div id="game-container">
         <canvas id="gameCanvas" width="800" height="400"></canvas>
     </div>
-    <p>Usa las <b>Flechas Izquierda/Derecha</b> para correr y <b>Espacio</b> para atacar.</p>
+    <p>Usa las <b>Flechas Izquierda/Derecha</b> para correr.</p>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
         // --- CARGA DE IMÁGENES ---
-        // Cargar el fondo
         const backgroundImage = new Image();
-        backgroundImage.src = 'fondo.png'; // IMPORTANTE: El nombre debe coincidir exactamente
+        backgroundImage.src = 'fondo.png'; 
 
-        // Cargar el personaje
         const spriteSheet = new Image();
         spriteSheet.src = 'panificador_run.png';
 
-        // --- CONFIGURACIÓN ---
-        // Variables para el desplazamiento del fondo
-        const backgroundSpeed = 2; // Velocidad a la que se mueve el fondo
-        let backgroundX = 0; // Posición actual del fondo
+        // --- CONFIGURACIÓN DE ESCALA Y ANIMACIÓN ---
+        // AJUSTE CRÍTICO: Estas medidas deben coincidir exactamente con UN frame de tu imagen.
+        // Si tu personaje parpadea, ajusta estos números (ancho y alto del recorte original).
+        const SPRITE_ORIGINAL_WIDTH = 128; 
+        const SPRITE_ORIGINAL_HEIGHT = 128; 
+        
+        // Clave: Esta es la escala a la que dibujaremos el sprite en el juego.
+        const GAME_SCALE = 2.5; // Aumenta este número para hacer al personaje más grande (2.5x).
 
-        // Ajuste según tu hoja de sprites real
         const spriteConfig = {
-            frameWidth: 128,  
-            frameHeight: 128, 
-            totalFrames: 6,   
+            frameWidth: SPRITE_ORIGINAL_WIDTH,
+            frameHeight: SPRITE_ORIGINAL_HEIGHT,
+            totalFrames: 6,
             animSpeed: 8,
             currentFrame: 0,
             counter: 0
         };
 
         const player = {
-            x: 50, y: 230,
+            x: 150, // Lo movemos un poco a la derecha para que se vea mejor
+            // Calculamos la posición Y para que esté en el suelo, usando la altura escalada.
+            y: 350 - (SPRITE_ORIGINAL_HEIGHT * GAME_SCALE), 
             speed: 5,
             isMoving: false,
             dir: 1
         };
 
+        const backgroundSpeed = 2;
+        let backgroundX = 0;
+
         const keys = {};
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
-        // --- ACTUALIZACIÓN DE LÓGICA ---
+        // --- LÓGICA ---
         function update() {
             player.isMoving = false;
-            
-            // Movimiento del jugador
-            if (keys['ArrowRight']) { player.x += player.speed; player.dir = 1; player.isMoving = true; }
-            if (keys['ArrowLeft']) { player.x -= player.speed; player.dir = -1; player.isMoving = true; }
-
-            // Lógica de desplazamiento del fondo
-            if (player.isMoving && player.dir === 1) {
-                backgroundX -= backgroundSpeed; // El fondo se mueve a la izquierda
-            } else if (player.isMoving && player.dir === -1) {
-                backgroundX += backgroundSpeed; // El fondo se mueve a la derecha
+            if (keys['ArrowRight']) { 
+                player.x += player.speed; 
+                player.dir = 1; 
+                player.isMoving = true; 
+            }
+            if (keys['ArrowLeft']) { 
+                player.x -= player.speed; 
+                player.dir = -1; 
+                player.isMoving = true; 
             }
 
-            // Asegurarse de que el fondo se repita
-            if (backgroundX <= -backgroundImage.width) {
-                backgroundX = 0;
-            } else if (backgroundX > 0) {
-                backgroundX = -backgroundImage.width;
+            // Evitar que salga de la pantalla (con el tamaño escalado)
+            const scaledWidth = SPRITE_ORIGINAL_WIDTH * GAME_SCALE;
+            if (player.x < 0) player.x = 0;
+            if (player.x > canvas.width - scaledWidth) player.x = canvas.width - scaledWidth;
+
+            // Desplazamiento del fondo (Parallax)
+            if (player.isMoving) {
+                if (player.dir === 1 && player.x > canvas.width / 2) {
+                    backgroundX -= backgroundSpeed; // El fondo se mueve a la izquierda
+                } else if (player.dir === -1 && player.x < canvas.width / 2) {
+                    backgroundX += backgroundSpeed; // El fondo se mueve a la derecha
+                }
             }
 
-            // Animación del personaje
+            // Repetir el fondo
+            if (backgroundImage.width > 0) {
+                if (backgroundX <= -backgroundImage.width) backgroundX = 0;
+                if (backgroundX > 0) backgroundX = -backgroundImage.width;
+            }
+
+            // Animación
             if (player.isMoving) {
                 spriteConfig.counter++;
                 if (spriteConfig.counter >= spriteConfig.animSpeed) {
@@ -93,20 +111,40 @@
         // --- DIBUJADO ---
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Dibujar el fondo (se dibuja dos veces para el bucle)
-            ctx.drawImage(backgroundImage, backgroundX, 0);
-            ctx.drawImage(backgroundImage, backgroundX + backgroundImage.width, 0);
 
-            // Dibujar Sprite del jugador
+            // 1. Dibujar Fondo (repitinedo para bucle infinito)
+            if (backgroundImage.complete) {
+                ctx.drawImage(backgroundImage, backgroundX, 0);
+                ctx.drawImage(backgroundImage, backgroundX + backgroundImage.width, 0);
+            }
+
+            // 2. Dibujar Suelo (opcional, para referencia)
+            ctx.fillStyle = "#333";
+            ctx.fillRect(0, 350, canvas.width, 50);
+
+            // 3. Dibujar Sprite Escalado
             const sx = spriteConfig.currentFrame * spriteConfig.frameWidth;
             
+            // Calculamos el tamaño final en el juego
+            const drawWidth = SPRITE_ORIGINAL_WIDTH * GAME_SCALE;
+            const drawHeight = SPRITE_ORIGINAL_HEIGHT * GAME_SCALE;
+
             ctx.save();
             if (player.dir === -1) {
                 ctx.scale(-1, 1);
-                ctx.drawImage(spriteSheet, sx, 0, spriteConfig.frameWidth, spriteConfig.frameHeight, -player.x - 100, player.y, 100, 100);
+                // Dibujado invertido
+                ctx.drawImage(
+                    spriteSheet, 
+                    sx, 0, spriteConfig.frameWidth, spriteConfig.frameHeight, // Recorte original
+                    -player.x - drawWidth, player.y, drawWidth, drawHeight // Destino escalado
+                );
             } else {
-                ctx.drawImage(spriteSheet, sx, 0, spriteConfig.frameWidth, spriteConfig.frameHeight, player.x, player.y, 100, 100);
+                // Dibujado normal
+                ctx.drawImage(
+                    spriteSheet, 
+                    sx, 0, spriteConfig.frameWidth, spriteConfig.frameHeight, // Recorte original
+                    player.x, player.y, drawWidth, drawHeight // Destino escalado
+                );
             }
             ctx.restore();
         }
@@ -119,19 +157,16 @@
         }
 
         // Iniciar cuando las imágenes estén cargadas
-        // Necesitamos asegurarnos de que ambas imágenes se carguen antes de empezar
         let loadedImages = 0;
         const totalImages = 2;
-
         const onImageLoad = () => {
             loadedImages++;
-            if (loadedImages === totalImages) {
-                main();
-            }
+            if (loadedImages === totalImages) main();
         };
 
         backgroundImage.onload = onImageLoad;
         spriteSheet.onload = onImageLoad;
+
     </script>
 </body>
 </html>
