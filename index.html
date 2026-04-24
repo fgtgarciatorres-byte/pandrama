@@ -2,170 +2,93 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>El Panificador: Pan-Runner 2026 - Movimiento</title>
+    <title>El Panificador: Pan-Runner 2026</title>
     <style>
-        body {
-            background-color: #1a1a1a;
-            color: white;
-            font-family: 'Courier New', Courier, monospace;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden;
-        }
-        #game-container {
-            position: relative;
-            border: 4px solid #ffd700;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
-        }
-        canvas {
-            display: block;
-            background-color: #000;
-        }
-        .level-info {
-            margin-bottom: 10px;
-            font-size: 20px;
-            text-transform: uppercase;
-        }
+        body { background-color: #1a1a1a; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        #game-container { position: relative; border: 4px solid #ffd700; }
+        canvas { display: block; background-color: #000; image-rendering: pixelated; } /* Para que no se vea borroso */
     </style>
 </head>
 <body>
 
-    <div class="level-info">Nivel 1: Bulevar de los Neones (Prueba de Movimiento)</div>
-
+    <h2>NIVEL 1: BULEVAR DE LOS NEONES</h2>
     <div id="game-container">
         <canvas id="gameCanvas" width="800" height="400"></canvas>
     </div>
-
-    <p>Usa las <b>Flechas Izquierda/Derecha</b> para correr.</p>
+    <p>Usa las <b>Flechas</b> para correr y <b>Espacio</b> para atacar.</p>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // --- CONFIGURACIÓN DE ANIMACIÓN ---
-        
-        // 1. Cargar la imagen (Asegúrate de que 'panificador_run.png' esté en la misma carpeta)
+        // Carga de imágenes
         const spriteSheet = new Image();
-        spriteSheet.src = 'panificador_run.png'; 
+        spriteSheet.src = 'panificador_run.png'; // Asegúrate de que el nombre sea exacto
 
-        // 2. Datos de la hoja de sprites
-        const spriteData = {
-            width: 60,      // Ancho de UN SOLO cuadro (frame) de animación
-            height: 80,     // Alto de UN SOLO cuadro (frame) de animación
-            frames: 6,      // Número total de cuadros en la secuencia de correr
-            speed: 10,       // Cuanto menor el número, más rápida la animación (ajusta esto)
+        // Ajuste según tu hoja de sprites real
+        const spriteConfig = {
+            frameWidth: 128,  // Ajusta este número según el ancho de UN solo frame en tu archivo
+            frameHeight: 128, // Ajusta este número según el alto
+            totalFrames: 6,   // Cuántos cuadros de movimiento tiene la fila de arriba
+            animSpeed: 8,
             currentFrame: 0,
             counter: 0
         };
 
-        // --- ESTADO DEL JUGADOR ---
         const player = {
-            x: 100,
-            y: 250, // Posición en el suelo
-            width: 60,  // Ancho para colisiones/dibujado (igual que el frame)
-            height: 80, // Alto para colisiones/dibujado (igual que el frame)
+            x: 50, y: 230,
             speed: 5,
             isMoving: false,
-            direction: 1 // 1 para derecha, -1 para izquierda
+            dir: 1
         };
 
-        // --- CONTROLES ---
         const keys = {};
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
-        // --- BUCLE PRINCIPAL (LÓGICA Y DIBUJO) ---
-
-        function gameLoop() {
-            update();
-            draw();
-            requestAnimationFrame(gameLoop);
-        }
-
-        // 1. Actualizar Lógica (Movimiento y Animación)
         function update() {
             player.isMoving = false;
+            if (keys['ArrowRight']) { player.x += player.speed; player.dir = 1; player.isMoving = true; }
+            if (keys['ArrowLeft']) { player.x -= player.speed; player.dir = -1; player.isMoving = true; }
 
-            // Movimiento y dirección
-            if (keys['ArrowRight']) {
-                player.x += player.speed;
-                player.direction = 1;
-                player.isMoving = true;
-            }
-            if (keys['ArrowLeft']) {
-                player.x -= player.speed;
-                player.direction = -1;
-                player.isMoving = true;
-            }
-
-            // Evitar que salga de la pantalla
-            if (player.x < 0) player.x = 0;
-            if (player.x > canvas.width - player.width) player.x = canvas.width - player.width;
-
-            // --- LÓGICA DE ANIMACIÓN ---
             if (player.isMoving) {
-                spriteData.counter++;
-                // Cambiar de frame solo cuando el contador llegue a 'speed'
-                if (spriteData.counter >= spriteData.speed) {
-                    spriteData.currentFrame = (spriteData.currentFrame + 1) % spriteData.frames;
-                    spriteData.counter = 0; // Reiniciar contador
+                spriteConfig.counter++;
+                if (spriteConfig.counter >= spriteConfig.animSpeed) {
+                    spriteConfig.currentFrame = (spriteConfig.currentFrame + 1) % spriteConfig.totalFrames;
+                    spriteConfig.counter = 0;
                 }
             } else {
-                // Si está quieto, mostrar el primer frame (o el frame de 'idle')
-                spriteData.currentFrame = 0;
-                spriteData.counter = 0;
+                spriteConfig.currentFrame = 0;
             }
         }
 
-        // 2. Dibujar en el Canvas
         function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height); // Limpiar pantalla
-
-            // Dibujar suelo simple
-            ctx.fillStyle = "#333";
-            ctx.fillRect(0, 330, canvas.width, 70);
-
-            // --- DIBUJAR EL SPRITE ANIMADO ---
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // ctx.drawImage(imagen, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight)
-            // s = source (origen en la hoja), d = destination (destino en el canvas)
+            // Dibujar suelo
+            ctx.fillStyle = "#333";
+            ctx.fillRect(0, 350, canvas.width, 50);
 
-            const sourceX = spriteData.currentFrame * spriteData.width; // Calcula qué cuadro cortar
-            const sourceY = 0; // Asumimos que es una sola fila
-
-            ctx.save(); // Guardar estado para la inversión de dirección
-
-            // Invertir la imagen si va a la izquierda
-            if (player.direction === -1) {
-                ctx.scale(-1, 1); // Invierte el eje X
-                // Ajustar la posición X para el dibujado invertido
-                ctx.drawImage(
-                    spriteSheet,
-                    sourceX, sourceY, spriteData.width, spriteData.height, // Qué cortar
-                    -player.x - player.width, player.y, player.width, player.height // Dónde dibujar (ajustado)
-                );
+            // Dibujar Sprite
+            const sx = spriteConfig.currentFrame * spriteConfig.frameWidth;
+            
+            ctx.save();
+            if (player.dir === -1) {
+                ctx.scale(-1, 1);
+                ctx.drawImage(spriteSheet, sx, 0, spriteConfig.frameWidth, spriteConfig.frameHeight, -player.x - 100, player.y, 100, 100);
             } else {
-                // Dibujado normal a la derecha
-                ctx.drawImage(
-                    spriteSheet,
-                    sourceX, sourceY, spriteData.width, spriteData.height, // Qué cortar
-                    player.x, player.y, player.width, player.height // Dónde dibujar
-                );
+                ctx.drawImage(spriteSheet, sx, 0, spriteConfig.frameWidth, spriteConfig.frameHeight, player.x, player.y, 100, 100);
             }
-
-            ctx.restore(); // Restaurar estado normal
+            ctx.restore();
         }
 
-        // Iniciar el juego una vez que la imagen esté cargada
-        spriteSheet.onload = () => {
-            gameLoop();
-        };
+        function main() {
+            update();
+            draw();
+            requestAnimationFrame(main);
+        }
 
+        spriteSheet.onload = () => main();
     </script>
 </body>
 </html>
