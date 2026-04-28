@@ -3,15 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-    <title>NIVEL 1 - CORREGIDO</title>
+    <title>EL PANIFICADOR - DX EDITION</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
-        :root { --ic: #ffd700 }
+        :root { --blue: #00d4ff; --red: #ff2a2a; --gold: #ffd700; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; touch-action: none; }
-        #info { color: var(--ic); font: bold 9px 'Press Start 2P', monospace; padding: 6px 8px; background: rgba(0,0,0,0.8); width: 100%; text-align: center; letter-spacing: 1px; }
-        canvas { display: block; image-rendering: pixelated; }
+        body { 
+            background: #050505; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            height: 100vh; overflow: hidden; touch-action: none; 
+            font-family: 'Press Start 2P', cursive;
+        }
+        #info { 
+            color: var(--gold); font-size: 10px; padding: 10px; 
+            background: linear-gradient(180deg, #111, #000); 
+            width: 100%; text-align: center; border-bottom: 2px solid #333;
+            text-shadow: 0 0 5px var(--gold);
+        }
+        canvas { 
+            display: block; 
+            image-rendering: pixelated; /* Mantiene los bordes limpios */
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
     </style>
 </head>
 <body>
@@ -30,26 +44,22 @@ function resize() {
 }
 resize(); window.addEventListener('resize', resize);
 
-const T = { x: 0, y: 0, down: false }; let _jd = false;
+// --- Inputs ---
+const T = { x: 0, y: 0, down: false };
 function gp(e) {
     const r = C.getBoundingClientRect(), s = e.changedTouches ? e.changedTouches[0] : e;
     return { x: (s.clientX - r.left) / scale, y: (s.clientY - r.top) / scale };
 }
-
 ['touchstart', 'touchend', 'touchmove'].forEach(ev => C.addEventListener(ev, e => {
     e.preventDefault(); const p = gp(e);
     if (ev !== 'touchend') { T.x = p.x; T.y = p.y; }
     T.down = ev === 'touchstart' || ev === 'touchmove';
-    if (ev === 'touchstart') _jd = true;
 }, { passive: false }));
-
-C.addEventListener('mousedown', e => { const p = gp(e); T.x = p.x; T.y = p.y; T.down = true; _jd = true; });
+C.addEventListener('mousedown', e => { const p = gp(e); T.x = p.x; T.y = p.y; T.down = true; });
 C.addEventListener('mouseup', () => T.down = false);
 C.addEventListener('mousemove', e => { if (T.down) { const p = gp(e); T.x = p.x; T.y = p.y; } });
 
-function jd(x, y, w, h) { return _jd && T.x >= x && T.x <= x + w && T.y >= y && T.y <= y + h; }
-function dn(x, y, w, h) { return T.down && T.x >= x && T.x <= x + w && T.y >= y && T.y <= y + h; }
-
+// --- Assets ---
 const IMGS = {};
 function loadImg(k, name) {
     const i = new Image();
@@ -57,172 +67,210 @@ function loadImg(k, name) {
     i.onload = () => { IMGS[k] = i; };
     i.src = './' + name; 
 }
-
-function ok(k) { return IMGS[k] && IMGS[k].complete && IMGS[k].naturalWidth > 0; }
+const ok = (k) => IMGS[k] && IMGS[k].complete;
 
 loadImg('bg', 'vinedo.png');
 loadImg('pan', 'pan1.png'); 
 loadImg('exc', 'explor.png');
 
-let fontOK = false;
-document.fonts.ready.then(() => fontOK = document.fonts.check('12px "Press Start 2P"'));
-function gf(sz) { return `bold ${sz}px ${fontOK ? "'Press Start 2P',monospace" : 'monospace'}`; }
-
-function fr(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x,y,w,h);}
-function sr(x,y,w,h,c,lw){ctx.strokeStyle=c;ctx.lineWidth=lw||1.5;ctx.strokeRect(x,y,w,h);}
-function txts(s,x,y,sz,c){ctx.font=gf(sz);ctx.textAlign='center';ctx.fillStyle='rgba(0,0,0,0.8)';ctx.fillText(s,x+2,y+2);ctx.fillStyle=c;ctx.fillText(s,x,y);}
-function txt(s,x,y,sz,c,al){ctx.font=gf(sz);ctx.fillStyle=c;ctx.textAlign=al||'left';ctx.fillText(s,x,y);}
-
-function bar(x,y,w,h,v,mx,c){
-    fr(x,y,w,h,'#111');
-    const f=Math.max(0,(w-2)*v/mx|0);
-    ctx.fillStyle=c;
-    ctx.fillRect(x+1,y+1,f,h-2);
-    sr(x,y,w,h,'#555',1);
+// --- Helpers Visuales ---
+function bar(x, y, w, h, v, mx, c1, c2) {
+    ctx.fillStyle = '#111';
+    ctx.fillRect(x, y, w, h);
+    const f = Math.max(0, (w) * v / mx);
+    let g = ctx.createLinearGradient(x, y, x, y + h);
+    g.addColorStop(0, c1); g.addColorStop(1, c2);
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y, f, h);
+    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    ctx.strokeRect(x, y, w, h);
 }
 
-function btn(x,y,w,h,lbl,bg,tc){
-    fr(x,y,w,h,bg);
-    sr(x,y,w,h,'#fff',1);
-    ctx.font=gf(9);
-    ctx.fillStyle=tc||'#fff';
-    ctx.textAlign='center';
-    ctx.fillText(lbl,x+w/2,y+h/2+4);
-}
+// --- DIBUJO DE PERSONAJE CON GLOW ---
+function drawPan(x, y, dir, shield) {
+    ctx.save();
+    ctx.translate(x, y);
+    
+    // Efecto Escudo (GLOW AZUL)
+    if (shield) {
+        ctx.save();
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#00d4ff';
+        ctx.strokeStyle = 'rgba(0, 212, 255, 0.8)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, 42, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // Aura interna difuminada
+        let grad = ctx.createRadialGradient(0, 0, 25, 0, 0, 45);
+        grad.addColorStop(0, 'rgba(0, 212, 255, 0)');
+        grad.addColorStop(1, 'rgba(0, 212, 255, 0.2)');
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.restore();
+    }
 
-// DIBUJO DE PERSONAJE (ESTÁTICO)
-function drawPan(x,y,dir,shield){
-    ctx.save(); 
-    ctx.translate(x,y); 
-    if(dir===-1) ctx.scale(-1,1);
-    if(ok('pan')){
-        // Eliminada la lógica de columnas, dibuja la imagen completa centrada
+    if (dir === -1) ctx.scale(-1, 1);
+    if (ok('pan')) {
         ctx.drawImage(IMGS.pan, -26, -34, 52, 70);
-    } else { 
-        fr(-15, -20, 30, 40, '#1a8fff'); 
-    }
-    if(shield){ 
-        ctx.strokeStyle='#4af'; ctx.lineWidth=3;
-        ctx.beginPath(); ctx.arc(0,0,40,0,Math.PI*2); ctx.stroke();
+    } else {
+        ctx.fillStyle = '#1a8fff'; ctx.fillRect(-15, -20, 30, 40);
     }
     ctx.restore();
 }
 
-// DIBUJO DE ENEMIGO (ESTÁTICO)
-function drawEnemy(key,x,y,dir){
-    ctx.save(); 
-    ctx.translate(x,y); 
-    if(dir===-1) ctx.scale(-1,1);
-    if(ok(key)){
-        // Imagen completa sin saltos de animación
+function drawEnemy(key, x, y, dir) {
+    ctx.save();
+    ctx.translate(x, y);
+    if (dir === -1) ctx.scale(-1, 1);
+    if (ok(key)) {
         ctx.drawImage(IMGS[key], -30, -35, 60, 75);
-    } else { 
-        fr(-20, -25, 40, 50, '#f44'); 
+    } else {
+        ctx.fillStyle = '#ff2a2a'; ctx.fillRect(-20, -25, 40, 50);
     }
     ctx.restore();
 }
 
-function drawBread(x,y,sz){ctx.fillStyle='#e8a030';ctx.beginPath();ctx.ellipse(x,y,sz,sz*.5,0,0,Math.PI*2);ctx.fill();}
-function drawBag(x,y){fr(x-12,y-10,24,20,'#8B4513');txt('G',x,y+5,9,'#ffd700','center');}
+// --- Lógica de Juego ---
+let score = 0, bgX = 0, bags = 0, frame = 0;
+let p = { x: W / 2, y: H - 170, hp: 100, en: 100, scool: 0, dir: 1 };
+let e = { x: W - 65, y: 110, hp: 100, dir: -1, sp: 2.2, tcool: 60 };
+let breads = [], items = [], coll = [];
+let win = false, over = false;
 
-// Estado del juego
-let score=0, bgX=0, bags=0, frame=0; const BAGS=5;
-let p={x:W/2, y:H-170, hp:100, maxhp:100, en:100, maxen:100, shield:false, scool:0, dir:1};
-let e={x:W-65, y:100, hp:100, maxhp:100, dir:-1, sp:2, tcool:80};
-let breads=[], items=[], coll=[], win=false, over=false;
-const SHB={x:16, y:H-100, w:120, h:70}, FIRE={x:W-136, y:H-100, w:120, h:70};
-
-function update(){
-    if(win||over) return;
+function update() {
+    if (win || over) return;
     frame++;
-    bgX=(bgX+0.5)%W;
+    bgX = (bgX + 0.8) % W;
 
-    if(T.down && T.y < H-110){
+    // Movimiento
+    if (T.down && T.y < H - 110) {
         p.x += (T.x - p.x) * 0.15;
         p.dir = T.x > p.x ? 1 : -1;
-        p.x = Math.max(30, Math.min(W-30, p.x));
     }
 
-    p.shield = dn(SHB.x, SHB.y, SHB.w, SHB.h) && p.en > 0;
-    if(p.shield) p.en -= 0.5; else p.en = Math.min(100, p.en + 0.1);
-    
-    if((jd(FIRE.x, FIRE.y, FIRE.w, FIRE.h) || (dn(FIRE.x, FIRE.y, FIRE.w, FIRE.h) && frame%15===0)) && p.scool<=0){
-        breads.push({x:p.x, y:p.y-30, vy:-8});
-        p.scool=15;
-    }
-    if(p.scool>0) p.scool--;
+    // Escudo y Disparo
+    let shieldBtn = T.down && T.x < W/2 && T.y > H-110;
+    let fireBtn = T.down && T.x >= W/2 && T.y > H-110;
 
+    p.shield = shieldBtn && p.en > 0;
+    if (p.shield) p.en -= 0.6; else p.en = Math.min(100, p.en + 0.15);
+
+    if (fireBtn && p.scool <= 0) {
+        breads.push({ x: p.x, y: p.y - 30, vy: -10 });
+        p.scool = 12;
+    }
+    if (p.scool > 0) p.scool--;
+
+    // Boss AI
     e.x += e.dir * e.sp;
-    if(e.x<50 || e.x>W-50) e.dir*=-1;
-
-    if(--e.tcool<=0){
-        items.push({x:e.x, y:e.y+20, vy:5, vx:(Math.random()-0.5)*4});
-        e.tcool=50;
+    if (e.x < 50 || e.x > W - 50) e.dir *= -1;
+    if (--e.tcool <= 0) {
+        items.push({ x: e.x, y: e.y + 20, vy: 6, vx: (Math.random() - 0.5) * 5 });
+        e.tcool = 45;
     }
 
-    if(frame%300===0) coll.push({type:'bag', x:Math.random()*(W-40)+20, y:0, vy:2.5});
+    // Spawn coleccionables
+    if (frame % 240 === 0) coll.push({ x: Math.random() * (W - 60) + 30, y: -20, vy: 3 });
 
+    // Colisiones
     breads = breads.filter(b => {
         b.y += b.vy;
-        if(Math.abs(b.x-e.x)<35 && Math.abs(b.y-e.y)<40){ e.hp-=4; score+=10; return false; }
+        if (Math.abs(b.x - e.x) < 35 && Math.abs(b.y - e.y) < 40) { e.hp -= 3; return false; }
         return b.y > 0;
     });
 
     items = items.filter(it => {
         it.y += it.vy; it.x += it.vx;
-        if(!p.shield && Math.abs(it.x-p.x)<25 && Math.abs(it.y-p.y)<35){ p.hp-=10; return false; }
+        if (!p.shield && Math.abs(it.x - p.x) < 25 && Math.abs(it.y - p.y) < 35) { p.hp -= 8; return false; }
         return it.y < H;
     });
 
     coll = coll.filter(c => {
         c.y += c.vy;
-        if(Math.abs(c.x-p.x)<30 && Math.abs(c.y-p.y)<40){ bags++; score+=100; return false; }
+        if (Math.abs(c.x - p.x) < 35 && Math.abs(c.y - p.y) < 40) { bags++; score += 50; return false; }
         return c.y < H;
     });
 
-    if(e.hp<=0) win=true;
-    if(p.hp<=0) over=true;
+    if (e.hp <= 0) win = true;
+    if (p.hp <= 0) over = true;
 }
 
-function draw(){
-    ctx.clearRect(0,0,W,H);
-    if(ok('bg')) {
-        ctx.drawImage(IMGS.bg, -bgX, 0, W, H-110);
-        ctx.drawImage(IMGS.bg, W-bgX, 0, W, H-110);
+function draw() {
+    ctx.clearRect(0, 0, W, H);
+    
+    // Fondo con parallax suave
+    if (ok('bg')) {
+        ctx.globalAlpha = 0.6;
+        ctx.drawImage(IMGS.bg, -bgX, 0, W, H - 110);
+        ctx.drawImage(IMGS.bg, W - bgX, 0, W, H - 110);
+        ctx.globalAlpha = 1.0;
     }
     
-    fr(0, H-110, W, 110, '#1a1a1a'); 
+    // Suelo
+    let groundG = ctx.createLinearGradient(0, H-110, 0, H);
+    groundG.addColorStop(0, '#111'); groundG.addColorStop(1, '#000');
+    ctx.fillStyle = groundG;
+    ctx.fillRect(0, H - 110, W, 110);
 
-    coll.forEach(c => drawBag(c.x, c.y));
-    breads.forEach(b => drawBread(b.x, b.y, 8));
-    items.forEach(it => { fr(it.x-4, it.y-4, 8, 8, '#f33'); });
+    // Entidades
+    coll.forEach(c => {
+        ctx.fillStyle = '#8B4513'; ctx.fillRect(c.x-12, c.y-10, 24, 20);
+        ctx.fillStyle = var(--gold); ctx.textAlign='center'; ctx.font='8px Arial'; ctx.fillText('G', c.x, c.y+5);
+    });
+
+    breads.forEach(b => {
+        ctx.fillStyle = '#ff9d00';
+        ctx.shadowBlur = 8; ctx.shadowColor = '#ff9d00';
+        ctx.beginPath(); ctx.arc(b.x, b.y, 6, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+    });
+
+    items.forEach(it => {
+        ctx.fillStyle = '#ff2a2a';
+        ctx.shadowBlur = 10; ctx.shadowColor = '#ff2a2a';
+        ctx.beginPath(); ctx.arc(it.x, it.y, 5, 0, Math.PI*2); ctx.fill();
+        ctx.shadowBlur = 0;
+    });
 
     drawEnemy('exc', e.x, e.y, e.dir);
     drawPan(p.x, p.y, p.dir, p.shield);
 
-    // UI - BARRA JUGADOR (Izquierda)
-    bar(10, 15, 140, 18, p.hp, p.maxhp, '#0f0'); 
-    txt('PANIFICADOR', 10, 10, 7, '#fff');
+    // UI Estilizada
+    bar(15, 25, 140, 14, p.hp, 100, '#00ff88', '#009944');
+    ctx.fillStyle = '#fff'; ctx.font = '8px "Press Start 2P"'; ctx.fillText('PLAYER', 15, 20);
 
-    // UI - BARRA MALVADO (Derecha - ¡NUEVA!)
-    bar(W-150, 15, 140, 18, e.hp, e.maxhp, '#f00');
-    txt('MALVADO', W-150, 10, 7, '#f00', 'left');
+    bar(W - 155, 25, 140, 14, e.hp, 100, '#ff2a2a', '#880000');
+    ctx.textAlign = 'right'; ctx.fillText('BOSS', W - 15, 20); ctx.textAlign = 'left';
 
-    txts('PUNTOS: '+score, W/2, 50, 8, '#fff');
-    txts('BOLSOS: '+bags+'/'+BAGS, W/2, 70, 8, '#ffd700');
+    bar(15, 45, 100, 8, p.en, 100, '#00d4ff', '#0055ff');
 
-    btn(SHB.x, SHB.y, SHB.w, SHB.h, 'ESCUDO', '#128');
-    btn(FIRE.x, FIRE.y, FIRE.w, FIRE.h, 'LANZAR', '#840');
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#ffd700'; ctx.fillText('BOLSOS: ' + bags + '/5', W / 2, 70);
+    
+    // Botones (Solo guía visual)
+    ctx.globalAlpha = 0.3;
+    ctx.fillStyle = '#128'; ctx.fillRect(10, H-100, W/2-20, 80);
+    ctx.fillStyle = '#840'; ctx.fillRect(W/2+10, H-100, W/2-20, 80);
+    ctx.globalAlpha = 1.0;
+    ctx.fillStyle = '#fff'; ctx.font='7px "Press Start 2P"';
+    ctx.fillText('ESCUDO', W/4, H-55); ctx.fillText('LANZAR', W*0.75, H-55);
 
-    if(win) { fr(0,0,W,H,'rgba(0,0,0,0.8)'); txts('¡VICTORIA!', W/2, H/2, 15, '#ffd700'); }
-    if(over) { fr(0,0,W,H,'rgba(0,0,0,0.8)'); txts('GAME OVER', W/2, H/2, 15, '#f00'); }
+    if (win) { 
+        ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(0,0,W,H);
+        ctx.fillStyle = '#0f8'; ctx.font='16px "Press Start 2P"'; ctx.fillText('VICTORIA', W/2, H/2);
+    }
+    if (over) {
+        ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(0,0,W,H);
+        ctx.fillStyle = '#f22'; ctx.font='16px "Press Start 2P"'; ctx.fillText('GAME OVER', W/2, H/2);
+    }
 }
 
-function loop(){
-    update(); draw(); _jd=false;
-    requestAnimationFrame(loop);
+function loop() {
+    update(); draw(); requestAnimationFrame(loop);
 }
-requestAnimationFrame(loop);
+loop();
 </script>
 </body>
 </html>
