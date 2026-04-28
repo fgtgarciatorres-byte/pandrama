@@ -3,29 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-    <title>EL PANIFICADOR - DX EDITION</title>
+    <title>EL PANIFICADOR - NIVEL 1</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
-        :root { --blue: #00d4ff; --red: #ff2a2a; --gold: #ffd700; }
+        :root { --gold: #ffd700; --blue: #00d4ff; --red: #ff2a2a; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            background: #050505; 
-            display: flex; flex-direction: column; align-items: center; justify-content: center; 
-            height: 100vh; overflow: hidden; touch-action: none; 
-            font-family: 'Press Start 2P', cursive;
-        }
-        #info { 
-            color: var(--gold); font-size: 10px; padding: 10px; 
-            background: linear-gradient(180deg, #111, #000); 
-            width: 100%; text-align: center; border-bottom: 2px solid #333;
-            text-shadow: 0 0 5px var(--gold);
-        }
-        canvas { 
-            display: block; 
-            image-rendering: pixelated; /* Mantiene los bordes limpios */
-            box-shadow: 0 0 20px rgba(0,0,0,0.5);
-        }
+        body { background: #050505; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; overflow: hidden; touch-action: none; font-family: 'Press Start 2P', cursive; }
+        #info { color: var(--gold); font-size: 9px; padding: 8px; background: #000; width: 100%; text-align: center; border-bottom: 1px solid #333; }
+        canvas { display: block; image-rendering: pixelated; background: #000; }
     </style>
 </head>
 <body>
@@ -44,8 +30,8 @@ function resize() {
 }
 resize(); window.addEventListener('resize', resize);
 
-// --- Inputs ---
-const T = { x: 0, y: 0, down: false };
+// --- CONTROLES (RESTAURADOS) ---
+const T = { x: 0, y: 0, down: false }; let _click = false;
 function gp(e) {
     const r = C.getBoundingClientRect(), s = e.changedTouches ? e.changedTouches[0] : e;
     return { x: (s.clientX - r.left) / scale, y: (s.clientY - r.top) / scale };
@@ -54,142 +40,137 @@ function gp(e) {
     e.preventDefault(); const p = gp(e);
     if (ev !== 'touchend') { T.x = p.x; T.y = p.y; }
     T.down = ev === 'touchstart' || ev === 'touchmove';
+    if (ev === 'touchstart') _click = true;
 }, { passive: false }));
-C.addEventListener('mousedown', e => { const p = gp(e); T.x = p.x; T.y = p.y; T.down = true; });
+C.addEventListener('mousedown', e => { const p = gp(e); T.x = p.x; T.y = p.y; T.down = true; _click = true; });
 C.addEventListener('mouseup', () => T.down = false);
 C.addEventListener('mousemove', e => { if (T.down) { const p = gp(e); T.x = p.x; T.y = p.y; } });
 
-// --- Assets ---
+function isTouching(x, y, w, h) { return T.down && T.x >= x && T.x <= x + w && T.y >= y && T.y <= y + h; }
+
+// --- ASSETS (RUTAS RELATIVAS PARA GITHUB) ---
 const IMGS = {};
 function loadImg(k, name) {
     const i = new Image();
     i.crossOrigin = 'anonymous';
     i.onload = () => { IMGS[k] = i; };
-    i.src = './' + name; 
+    i.src = './' + name; // Cambiado a relativo para que funcione en GitHub Pages
 }
 const ok = (k) => IMGS[k] && IMGS[k].complete;
 
 loadImg('bg', 'vinedo.png');
-loadImg('pan', 'pan1.png'); 
+loadImg('pan', 'pan1.png');
 loadImg('exc', 'explor.png');
 
-// --- Helpers Visuales ---
-function bar(x, y, w, h, v, mx, c1, c2) {
-    ctx.fillStyle = '#111';
+// --- DIBUJO ---
+function bar(x, y, w, h, v, mx, c1) {
+    ctx.fillStyle = '#222';
     ctx.fillRect(x, y, w, h);
-    const f = Math.max(0, (w) * v / mx);
-    let g = ctx.createLinearGradient(x, y, x, y + h);
-    g.addColorStop(0, c1); g.addColorStop(1, c2);
-    ctx.fillStyle = g;
-    ctx.fillRect(x, y, f, h);
-    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+    const f = Math.max(0, (w - 2) * v / mx);
+    ctx.fillStyle = c1;
+    ctx.fillRect(x + 1, y + 1, f, h - 2);
+    ctx.strokeStyle = '#555';
     ctx.strokeRect(x, y, w, h);
 }
 
-// --- DIBUJO DE PERSONAJE CON GLOW ---
-function drawPan(x, y, dir, shield) {
+function btn(x, y, w, h, lbl, color) {
+    ctx.fillStyle = color;
+    ctx.globalAlpha = isTouching(x, y, w, h) ? 0.6 : 0.4;
+    ctx.fillRect(x, y, w, h);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = '#fff';
+    ctx.strokeRect(x, y, w, h);
+    ctx.fillStyle = '#fff';
+    ctx.font = '10px "Press Start 2P"';
+    ctx.textAlign = 'center';
+    ctx.fillText(lbl, x + w / 2, y + h / 2 + 5);
+}
+
+function drawEntity(key, x, y, dir, isPlayer, shield) {
     ctx.save();
     ctx.translate(x, y);
     
-    // Efecto Escudo (GLOW AZUL)
-    if (shield) {
-        ctx.save();
+    // EFECTO ESCUDO (GLOW AZUL REALISTA)
+    if (isPlayer && shield) {
         ctx.shadowBlur = 15;
         ctx.shadowColor = '#00d4ff';
-        ctx.strokeStyle = 'rgba(0, 212, 255, 0.8)';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(0, 0, 42, 0, Math.PI * 2);
-        ctx.stroke();
-        
-        // Aura interna difuminada
-        let grad = ctx.createRadialGradient(0, 0, 25, 0, 0, 45);
-        grad.addColorStop(0, 'rgba(0, 212, 255, 0)');
-        grad.addColorStop(1, 'rgba(0, 212, 255, 0.2)');
-        ctx.fillStyle = grad;
-        ctx.fill();
-        ctx.restore();
+        let g = ctx.createRadialGradient(0, 0, 20, 0, 0, 45);
+        g.addColorStop(0, 'rgba(0, 212, 255, 0)');
+        g.addColorStop(1, 'rgba(0, 212, 255, 0.4)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(0, 0, 45, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#00d4ff'; ctx.lineWidth = 2; ctx.stroke();
     }
 
-    if (dir === -1) ctx.scale(-1, 1);
-    if (ok('pan')) {
-        ctx.drawImage(IMGS.pan, -26, -34, 52, 70);
-    } else {
-        ctx.fillStyle = '#1a8fff'; ctx.fillRect(-15, -20, 30, 40);
-    }
-    ctx.restore();
-}
-
-function drawEnemy(key, x, y, dir) {
-    ctx.save();
-    ctx.translate(x, y);
     if (dir === -1) ctx.scale(-1, 1);
     if (ok(key)) {
-        ctx.drawImage(IMGS[key], -30, -35, 60, 75);
+        // Dibuja la imagen completa (sin saltos de sprite)
+        ctx.drawImage(IMGS[key], -30, -35, 60, 70);
     } else {
-        ctx.fillStyle = '#ff2a2a'; ctx.fillRect(-20, -25, 40, 50);
+        ctx.fillStyle = isPlayer ? '#1a8fff' : '#f44';
+        ctx.fillRect(-20, -25, 40, 50);
     }
     ctx.restore();
 }
 
-// --- Lógica de Juego ---
+// --- LÓGICA ---
 let score = 0, bgX = 0, bags = 0, frame = 0;
-let p = { x: W / 2, y: H - 170, hp: 100, en: 100, scool: 0, dir: 1 };
-let e = { x: W - 65, y: 110, hp: 100, dir: -1, sp: 2.2, tcool: 60 };
+let p = { x: W / 2, y: H - 180, hp: 100, en: 100, shield: false, scool: 0, dir: 1 };
+let e = { x: W - 70, y: 110, hp: 100, dir: -1, sp: 2, tcool: 60 };
 let breads = [], items = [], coll = [];
 let win = false, over = false;
+
+const SHB = { x: 15, y: H - 100, w: 170, h: 80 };
+const FIRE = { x: W - 185, y: H - 100, w: 170, h: 80 };
 
 function update() {
     if (win || over) return;
     frame++;
-    bgX = (bgX + 0.8) % W;
+    bgX = (bgX + 0.6) % W;
 
-    // Movimiento
+    // Movimiento (Centrado al dedo)
     if (T.down && T.y < H - 110) {
         p.x += (T.x - p.x) * 0.15;
         p.dir = T.x > p.x ? 1 : -1;
     }
 
-    // Escudo y Disparo
-    let shieldBtn = T.down && T.x < W/2 && T.y > H-110;
-    let fireBtn = T.down && T.x >= W/2 && T.y > H-110;
+    // Acciones
+    p.shield = isTouching(SHB.x, SHB.y, SHB.w, SHB.h) && p.en > 0;
+    if (p.shield) p.en -= 0.6; else p.en = Math.min(100, p.en + 0.2);
 
-    p.shield = shieldBtn && p.en > 0;
-    if (p.shield) p.en -= 0.6; else p.en = Math.min(100, p.en + 0.15);
-
-    if (fireBtn && p.scool <= 0) {
-        breads.push({ x: p.x, y: p.y - 30, vy: -10 });
-        p.scool = 12;
+    if (isTouching(FIRE.x, FIRE.y, FIRE.w, FIRE.h) && p.scool <= 0) {
+        breads.push({ x: p.x, y: p.y - 30, vy: -9 });
+        p.scool = 15;
     }
     if (p.scool > 0) p.scool--;
 
-    // Boss AI
+    // Enemigo
     e.x += e.dir * e.sp;
     if (e.x < 50 || e.x > W - 50) e.dir *= -1;
     if (--e.tcool <= 0) {
-        items.push({ x: e.x, y: e.y + 20, vy: 6, vx: (Math.random() - 0.5) * 5 });
-        e.tcool = 45;
+        items.push({ x: e.x, y: e.y + 20, vy: 5, vx: (Math.random() - 0.5) * 4 });
+        e.tcool = 50;
     }
 
-    // Spawn coleccionables
-    if (frame % 240 === 0) coll.push({ x: Math.random() * (W - 60) + 30, y: -20, vy: 3 });
+    // Items
+    if (frame % 250 === 0) coll.push({ x: Math.random() * (W - 60) + 30, y: -20, vy: 3 });
 
     // Colisiones
     breads = breads.filter(b => {
         b.y += b.vy;
-        if (Math.abs(b.x - e.x) < 35 && Math.abs(b.y - e.y) < 40) { e.hp -= 3; return false; }
+        if (Math.abs(b.x - e.x) < 35 && Math.abs(b.y - e.y) < 40) { e.hp -= 5; score += 50; return false; }
         return b.y > 0;
     });
 
     items = items.filter(it => {
         it.y += it.vy; it.x += it.vx;
-        if (!p.shield && Math.abs(it.x - p.x) < 25 && Math.abs(it.y - p.y) < 35) { p.hp -= 8; return false; }
+        if (!p.shield && Math.abs(it.x - p.x) < 25 && Math.abs(it.y - p.y) < 35) { p.hp -= 10; return false; }
         return it.y < H;
     });
 
     coll = coll.filter(c => {
         c.y += c.vy;
-        if (Math.abs(c.x - p.x) < 35 && Math.abs(c.y - p.y) < 40) { bags++; score += 50; return false; }
+        if (Math.abs(c.x - p.x) < 30 && Math.abs(c.y - p.y) < 40) { bags++; score += 100; return false; }
         return c.y < H;
     });
 
@@ -200,75 +181,67 @@ function update() {
 function draw() {
     ctx.clearRect(0, 0, W, H);
     
-    // Fondo con parallax suave
+    // Fondo
     if (ok('bg')) {
-        ctx.globalAlpha = 0.6;
         ctx.drawImage(IMGS.bg, -bgX, 0, W, H - 110);
         ctx.drawImage(IMGS.bg, W - bgX, 0, W, H - 110);
-        ctx.globalAlpha = 1.0;
     }
     
     // Suelo
-    let groundG = ctx.createLinearGradient(0, H-110, 0, H);
-    groundG.addColorStop(0, '#111'); groundG.addColorStop(1, '#000');
-    ctx.fillStyle = groundG;
+    ctx.fillStyle = '#111';
     ctx.fillRect(0, H - 110, W, 110);
 
-    // Entidades
+    // Coleccionables (Bolsos)
     coll.forEach(c => {
         ctx.fillStyle = '#8B4513'; ctx.fillRect(c.x-12, c.y-10, 24, 20);
-        ctx.fillStyle = var(--gold); ctx.textAlign='center'; ctx.font='8px Arial'; ctx.fillText('G', c.x, c.y+5);
+        ctx.fillStyle = '#ffd700'; ctx.font='8px Arial'; ctx.textAlign='center'; ctx.fillText('G', c.x, c.y+5);
     });
 
     breads.forEach(b => {
-        ctx.fillStyle = '#ff9d00';
-        ctx.shadowBlur = 8; ctx.shadowColor = '#ff9d00';
-        ctx.beginPath(); ctx.arc(b.x, b.y, 6, 0, Math.PI*2); ctx.fill();
-        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ff9d00'; ctx.beginPath(); ctx.arc(b.x, b.y, 7, 0, Math.PI*2); ctx.fill();
     });
 
     items.forEach(it => {
-        ctx.fillStyle = '#ff2a2a';
-        ctx.shadowBlur = 10; ctx.shadowColor = '#ff2a2a';
-        ctx.beginPath(); ctx.arc(it.x, it.y, 5, 0, Math.PI*2); ctx.fill();
-        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ff2a2a'; ctx.beginPath(); ctx.arc(it.x, it.y, 5, 0, Math.PI*2); ctx.fill();
     });
 
-    drawEnemy('exc', e.x, e.y, e.dir);
-    drawPan(p.x, p.y, p.dir, p.shield);
+    // Entidades
+    drawEntity('exc', e.x, e.y, e.dir, false);
+    drawEntity('pan', p.x, p.y, p.dir, true, p.shield);
 
-    // UI Estilizada
-    bar(15, 25, 140, 14, p.hp, 100, '#00ff88', '#009944');
-    ctx.fillStyle = '#fff'; ctx.font = '8px "Press Start 2P"'; ctx.fillText('PLAYER', 15, 20);
+    // UI (ESTÉTICA NEÓN)
+    bar(15, 20, 140, 15, p.hp, 100, '#0f0'); 
+    ctx.fillStyle = '#fff'; ctx.font = '7px "Press Start 2P"'; ctx.textAlign='left'; ctx.fillText('JUGADOR', 15, 15);
 
-    bar(W - 155, 25, 140, 14, e.hp, 100, '#ff2a2a', '#880000');
-    ctx.textAlign = 'right'; ctx.fillText('BOSS', W - 15, 20); ctx.textAlign = 'left';
+    bar(W - 155, 20, 140, 15, e.hp, 100, '#f00');
+    ctx.textAlign = 'right'; ctx.fillText('EXPLORADOR', W - 15, 15);
 
-    bar(15, 45, 100, 8, p.en, 100, '#00d4ff', '#0055ff');
+    bar(15, 40, 100, 8, p.en, 100, '#0af'); // Energía
 
     ctx.textAlign = 'center';
-    ctx.fillStyle = '#ffd700'; ctx.fillText('BOLSOS: ' + bags + '/5', W / 2, 70);
-    
-    // Botones (Solo guía visual)
-    ctx.globalAlpha = 0.3;
-    ctx.fillStyle = '#128'; ctx.fillRect(10, H-100, W/2-20, 80);
-    ctx.fillStyle = '#840'; ctx.fillRect(W/2+10, H-100, W/2-20, 80);
-    ctx.globalAlpha = 1.0;
-    ctx.fillStyle = '#fff'; ctx.font='7px "Press Start 2P"';
-    ctx.fillText('ESCUDO', W/4, H-55); ctx.fillText('LANZAR', W*0.75, H-55);
+    ctx.fillStyle = '#fff'; ctx.fillText('PUNTOS: ' + score, W/2, 60);
+    ctx.fillStyle = '#ffd700'; ctx.fillText('BOLSOS: ' + bags + '/5', W/2, 75);
 
-    if (win) { 
-        ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(0,0,W,H);
-        ctx.fillStyle = '#0f8'; ctx.font='16px "Press Start 2P"'; ctx.fillText('VICTORIA', W/2, H/2);
-    }
-    if (over) {
-        ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.fillRect(0,0,W,H);
-        ctx.fillStyle = '#f22'; ctx.font='16px "Press Start 2P"'; ctx.fillText('GAME OVER', W/2, H/2);
-    }
+    // BOTONES
+    btn(SHB.x, SHB.y, SHB.w, SHB.h, 'ESCUDO', '#114');
+    btn(FIRE.x, FIRE.y, FIRE.w, FIRE.h, 'LANZAR', '#420');
+
+    if (win) { ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(0,0,W,H); ctx.fillStyle = '#0f8'; ctx.font='14px "Press Start 2P"'; ctx.fillText('¡VICTORIA!', W/2, H/2); }
+    if (over) { ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(0,0,W,H); ctx.fillStyle = '#f22'; ctx.font='14px "Press Start 2P"'; ctx.fillText('GAME OVER', W/2, H/2); }
 }
 
 function loop() {
-    update(); draw(); requestAnimationFrame(loop);
+    // Pantalla de carga simple
+    if (!ok('pan') || !ok('bg') || !ok('exc')) {
+        ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
+        ctx.fillStyle = '#ffd700'; ctx.textAlign = 'center';
+        ctx.font = '10px "Press Start 2P"';
+        ctx.fillText('CARGANDO...', W/2, H/2);
+    } else {
+        update(); draw();
+    }
+    _click = false;
+    requestAnimationFrame(loop);
 }
 loop();
 </script>
