@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Test Imágenes</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#111; color:#fff; font:14px monospace; touch-action:none; overflow:hidden; }
+canvas { display:block; }
+#log { position:fixed; bottom:0; left:0; right:0; background:rgba(0,0,0,0.8); padding:8px; font-size:11px; max-height:160px; overflow-y:auto; }
+.ok  { color:#0f0; }
+.err { color:#f44; }
+.inf { color:#ff0; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="log"><div class="inf">Cargando imágenes desde GitHub main...</div></div>
+
+<script>
+const C = document.getElementById('c');
+const ctx = C.getContext('2d');
+const log = document.getElementById('log');
+
+C.width  = window.innerWidth;
+C.height = window.innerHeight - 160;
+
+const RAW = 'https://raw.githubusercontent.com/fgtgarciatorres-byte/pandrama/main/';
+
+// Punto donde aparece la imagen (sigue al dedo/ratón)
+let mx = C.width/2, my = C.height/2;
+
+C.addEventListener('touchmove', e => {
+  e.preventDefault();
+  const r = C.getBoundingClientRect();
+  mx = e.touches[0].clientX - r.left;
+  my = e.touches[0].clientY - r.top;
+}, {passive:false});
+C.addEventListener('mousemove', e => { mx=e.offsetX; my=e.offsetY; });
+
+// ── CARGA DE IMÁGENES ─────────────────────────────────────
+const IMGS = {};
+
+function addLog(msg, cls) {
+  const d = document.createElement('div');
+  d.className = cls;
+  d.textContent = msg;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+
+function loadImg(key, filename) {
+  addLog(`⏳ Intentando: ${filename}`, 'inf');
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => {
+    IMGS[key] = img;
+    addLog(`✅ OK: ${filename} — ${img.width}×${img.height}px`, 'ok');
+  };
+  img.onerror = () => {
+    addLog(`❌ FALLO: ${filename}`, 'err');
+  };
+  img.src = RAW + filename + '?v=' + Date.now();
+}
+
+// Prueba los nombres que nos ha confirmado el usuario
+loadImg('pan',   'pan1.png');
+loadImg('explor','explor.png');
+
+// ── LOOP ─────────────────────────────────────────────────
+let frame = 0;
+function loop() {
+  frame++;
+  ctx.clearRect(0, 0, C.width, C.height);
+
+  // Fondo
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(0, 0, C.width, C.height);
+  ctx.fillStyle = 'rgba(255,255,255,0.05)';
+  for(let i=0;i<C.width;i+=40) ctx.fillRect(i,0,1,C.height);
+  for(let j=0;j<C.height;j+=40) ctx.fillRect(0,j,C.width,1);
+
+  // Instrucción
+  ctx.font = '13px monospace';
+  ctx.fillStyle = '#aaa';
+  ctx.textAlign = 'center';
+  ctx.fillText('Mueve el dedo / ratón sobre la pantalla', C.width/2, 30);
+
+  // Dibuja pan1.png si cargó
+  if (IMGS.pan) {
+    ctx.drawImage(IMGS.pan, mx - 48, my - 60, 96, 120);
+    ctx.fillStyle = '#0f0';
+    ctx.fillText('pan1.png ✅', mx, my + 75);
+  } else {
+    // Placeholder
+    ctx.fillStyle = '#334';
+    ctx.fillRect(mx-48, my-60, 96, 120);
+    ctx.fillStyle = '#f44';
+    ctx.textAlign = 'center';
+    ctx.fillText('pan1.png ❌', mx, my + 75);
+  }
+
+  // Dibuja explor.png en esquina si cargó
+  if (IMGS.explor) {
+    ctx.drawImage(IMGS.explor, 20, 50, 96, 120);
+    ctx.fillStyle = '#0f0';
+    ctx.textAlign = 'left';
+    ctx.fillText('explor.png ✅', 20, 180);
+  } else {
+    ctx.fillStyle = '#334';
+    ctx.fillRect(20, 50, 96, 120);
+    ctx.fillStyle = '#f44';
+    ctx.textAlign = 'left';
+    ctx.fillText('explor.png ❌', 20, 180);
+  }
+
+  // Crosshair
+  ctx.strokeStyle = 'rgba(255,255,0,0.6)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(mx-20,my); ctx.lineTo(mx+20,my); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(mx,my-20); ctx.lineTo(mx,my+20); ctx.stroke();
+
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
