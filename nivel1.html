@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
-    <title>NIVEL 1 - EL PANIFICADOR</title>
+    <title>NIVEL 1 - CORREGIDO</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
@@ -51,81 +51,100 @@ function jd(x, y, w, h) { return _jd && T.x >= x && T.x <= x + w && T.y >= y && 
 function dn(x, y, w, h) { return T.down && T.x >= x && T.x <= x + w && T.y >= y && T.y <= y + h; }
 
 const IMGS = {};
-// CORRECCIÓN: Usar rutas relativas para evitar problemas con el nombre del repo
 function loadImg(k, name) {
     const i = new Image();
     i.crossOrigin = 'anonymous';
-    i.onload = () => { IMGS[k] = i; console.log('✅ Cargado:', k); };
-    i.onerror = () => console.warn('❌ Error al cargar:', name);
-    i.src = './' + name; // Busca el archivo en la misma carpeta del repo
+    i.onload = () => { IMGS[k] = i; };
+    i.src = './' + name; 
 }
 
 function ok(k) { return IMGS[k] && IMGS[k].complete && IMGS[k].naturalWidth > 0; }
 
-// Assets
 loadImg('bg', 'vinedo.png');
-loadImg('pan', 'pan1.png'); // Asegúrate de que pan1.png tenga 6 columnas de ancho
+loadImg('pan', 'pan1.png'); 
 loadImg('exc', 'explor.png');
 
 let fontOK = false;
 document.fonts.ready.then(() => fontOK = document.fonts.check('12px "Press Start 2P"'));
 function gf(sz) { return `bold ${sz}px ${fontOK ? "'Press Start 2P',monospace" : 'monospace'}`; }
 
-// Funciones de dibujo (se mantienen igual pero con correcciones de lógica)
 function fr(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(x,y,w,h);}
 function sr(x,y,w,h,c,lw){ctx.strokeStyle=c;ctx.lineWidth=lw||1.5;ctx.strokeRect(x,y,w,h);}
 function txts(s,x,y,sz,c){ctx.font=gf(sz);ctx.textAlign='center';ctx.fillStyle='rgba(0,0,0,0.8)';ctx.fillText(s,x+2,y+2);ctx.fillStyle=c;ctx.fillText(s,x,y);}
 function txt(s,x,y,sz,c,al){ctx.font=gf(sz);ctx.fillStyle=c;ctx.textAlign=al||'left';ctx.fillText(s,x,y);}
 
-function bar(x,y,w,h,v,mx,c){fr(x,y,w,h,'#111');const f=Math.max(0,(w-2)*v/mx|0);ctx.fillStyle=c;ctx.fillRect(x+1,y+1,f,h-2);sr(x,y,w,h,'#555',1);}
-function btn(x,y,w,h,lbl,bg,tc){fr(x,y,w,h,bg);sr(x,y,w,h,'#fff',1);ctx.font=gf(9);ctx.fillStyle=tc||'#fff';ctx.textAlign='center';ctx.fillText(lbl,x+w/2,y+h/2+4);}
+function bar(x,y,w,h,v,mx,c){
+    fr(x,y,w,h,'#111');
+    const f=Math.max(0,(w-2)*v/mx|0);
+    ctx.fillStyle=c;
+    ctx.fillRect(x+1,y+1,f,h-2);
+    sr(x,y,w,h,'#555',1);
+}
+
+function btn(x,y,w,h,lbl,bg,tc){
+    fr(x,y,w,h,bg);
+    sr(x,y,w,h,'#fff',1);
+    ctx.font=gf(9);
+    ctx.fillStyle=tc||'#fff';
+    ctx.textAlign='center';
+    ctx.fillText(lbl,x+w/2,y+h/2+4);
+}
+
+// DIBUJO DE PERSONAJE (ESTÁTICO)
+function drawPan(x,y,dir,shield){
+    ctx.save(); 
+    ctx.translate(x,y); 
+    if(dir===-1) ctx.scale(-1,1);
+    if(ok('pan')){
+        // Eliminada la lógica de columnas, dibuja la imagen completa centrada
+        ctx.drawImage(IMGS.pan, -26, -34, 52, 70);
+    } else { 
+        fr(-15, -20, 30, 40, '#1a8fff'); 
+    }
+    if(shield){ 
+        ctx.strokeStyle='#4af'; ctx.lineWidth=3;
+        ctx.beginPath(); ctx.arc(0,0,40,0,Math.PI*2); ctx.stroke();
+    }
+    ctx.restore();
+}
+
+// DIBUJO DE ENEMIGO (ESTÁTICO)
+function drawEnemy(key,x,y,dir){
+    ctx.save(); 
+    ctx.translate(x,y); 
+    if(dir===-1) ctx.scale(-1,1);
+    if(ok(key)){
+        // Imagen completa sin saltos de animación
+        ctx.drawImage(IMGS[key], -30, -35, 60, 75);
+    } else { 
+        fr(-20, -25, 40, 50, '#f44'); 
+    }
+    ctx.restore();
+}
 
 function drawBread(x,y,sz){ctx.fillStyle='#e8a030';ctx.beginPath();ctx.ellipse(x,y,sz,sz*.5,0,0,Math.PI*2);ctx.fill();}
-function drawWheat(x,y){ctx.fillStyle='#d4af37';ctx.fillRect(x-2,y,4,15);ctx.fillRect(x-6,y-5,12,8);}
 function drawBag(x,y){fr(x-12,y-10,24,20,'#8B4513');txt('G',x,y+5,9,'#ffd700','center');}
 
-function drawPan(x,y,fr_,dir,shield,state){
-    ctx.save(); ctx.translate(x,y); if(dir===-1) ctx.scale(-1,1);
-    if(ok('pan')){
-        const COLS=6, fw=IMGS.pan.width/COLS, fh=IMGS.pan.height;
-        let col=Math.floor(fr_/6)%COLS;
-        ctx.drawImage(IMGS.pan, col*fw, 0, fw, fh, -26, -34, 52, 70);
-    } else { fr(-15, -20, 30, 40, '#1a8fff'); } // Fallback si no carga imagen
-    if(shield){ sr(-30, -35, 60, 75, '#4af', 3); }
-    ctx.restore();
-}
-
-function drawEnemy(key,x,y,fr_,dir,state,cols){
-    ctx.save(); ctx.translate(x,y); if(dir===-1) ctx.scale(-1,1);
-    if(ok(key)){
-        const COLS=cols||6, fw=IMGS[key].width/COLS, fh=IMGS[key].height;
-        let col=Math.floor(fr_/6)%COLS;
-        ctx.drawImage(IMGS[key], col*fw, 0, fw, fh, -26, -34, 52, 70);
-    } else { fr(-15, -20, 30, 40, '#f44'); }
-    ctx.restore();
-}
-
-// Lógica de juego
+// Estado del juego
 let score=0, bgX=0, bags=0, frame=0; const BAGS=5;
-let p={x:W/2, y:H-170, hp:100, maxhp:100, en:0, maxen:100, shield:false, scool:0, fr:0, dir:1, state:'run'};
-let e={x:W-65, y:80, hp:100, maxhp:100, fr:0, dir:-1, sp:2, tcool:80};
+let p={x:W/2, y:H-170, hp:100, maxhp:100, en:100, maxen:100, shield:false, scool:0, dir:1};
+let e={x:W-65, y:100, hp:100, maxhp:100, dir:-1, sp:2, tcool:80};
 let breads=[], items=[], coll=[], win=false, over=false;
 const SHB={x:16, y:H-100, w:120, h:70}, FIRE={x:W-136, y:H-100, w:120, h:70};
 
 function update(){
     if(win||over) return;
-    frame++; p.fr++; e.fr++;
-    bgX=(bgX+1)%W;
+    frame++;
+    bgX=(bgX+0.5)%W;
 
-    // Movimiento corregido (suave y centrado)
     if(T.down && T.y < H-110){
         p.x += (T.x - p.x) * 0.15;
+        p.dir = T.x > p.x ? 1 : -1;
         p.x = Math.max(30, Math.min(W-30, p.x));
     }
 
-    // Escudo y Ataque
     p.shield = dn(SHB.x, SHB.y, SHB.w, SHB.h) && p.en > 0;
-    if(p.shield) { p.en -= 0.5; p.state='def'; } else { p.state='run'; }
+    if(p.shield) p.en -= 0.5; else p.en = Math.min(100, p.en + 0.1);
     
     if((jd(FIRE.x, FIRE.y, FIRE.w, FIRE.h) || (dn(FIRE.x, FIRE.y, FIRE.w, FIRE.h) && frame%15===0)) && p.scool<=0){
         breads.push({x:p.x, y:p.y-30, vy:-8});
@@ -133,24 +152,19 @@ function update(){
     }
     if(p.scool>0) p.scool--;
 
-    // Movimiento Enemigo
     e.x += e.dir * e.sp;
-    if(e.x<40 || e.x>W-40) e.dir*=-1;
+    if(e.x<50 || e.x>W-50) e.dir*=-1;
 
-    // Disparos Enemigo
     if(--e.tcool<=0){
-        items.push({x:e.x, y:e.y+20, vy:4, vx:(Math.random()-0.5)*4});
-        e.tcool=60;
+        items.push({x:e.x, y:e.y+20, vy:5, vx:(Math.random()-0.5)*4});
+        e.tcool=50;
     }
 
-    // Spawn de items
-    if(frame%250===0) coll.push({type:'bag', x:Math.random()*(W-40)+20, y:0, vy:3});
-    if(frame%300===0) coll.push({type:'wheat', x:Math.random()*(W-40)+20, y:H-200, vy:0});
+    if(frame%300===0) coll.push({type:'bag', x:Math.random()*(W-40)+20, y:0, vy:2.5});
 
-    // Colisiones
     breads = breads.filter(b => {
         b.y += b.vy;
-        if(Math.abs(b.x-e.x)<30 && Math.abs(b.y-e.y)<40){ e.hp-=5; score+=10; return false; }
+        if(Math.abs(b.x-e.x)<35 && Math.abs(b.y-e.y)<40){ e.hp-=4; score+=10; return false; }
         return b.y > 0;
     });
 
@@ -161,55 +175,50 @@ function update(){
     });
 
     coll = coll.filter(c => {
-        if(c.type==='bag') c.y += c.vy;
-        if(Math.abs(c.x-p.x)<30 && Math.abs(c.y-p.y)<40){
-            if(c.type==='bag'){ bags++; score+=100; } else { p.en = Math.min(100, p.en+25); }
-            return false;
-        }
+        c.y += c.vy;
+        if(Math.abs(c.x-p.x)<30 && Math.abs(c.y-p.y)<40){ bags++; score+=100; return false; }
         return c.y < H;
     });
 
-    if(bags>=BAGS || e.hp<=0) win=true;
+    if(e.hp<=0) win=true;
     if(p.hp<=0) over=true;
 }
 
 function draw(){
     ctx.clearRect(0,0,W,H);
-    // Fondo
     if(ok('bg')) {
         ctx.drawImage(IMGS.bg, -bgX, 0, W, H-110);
         ctx.drawImage(IMGS.bg, W-bgX, 0, W, H-110);
-    } else { fr(0,0,W,H,'#333'); }
+    }
     
-    fr(0, H-110, W, 110, '#222'); // Suelo
+    fr(0, H-110, W, 110, '#1a1a1a'); 
 
-    coll.forEach(c => c.type==='bag' ? drawBag(c.x, c.y) : drawWheat(c.x, c.y));
+    coll.forEach(c => drawBag(c.x, c.y));
     breads.forEach(b => drawBread(b.x, b.y, 8));
-    items.forEach(it => { fr(it.x-5, it.y-5, 10, 10, '#f00'); });
+    items.forEach(it => { fr(it.x-4, it.y-4, 8, 8, '#f33'); });
 
-    drawEnemy('exc', e.x, e.y, e.fr, e.dir, 'idle', 3);
-    drawPan(p.x, p.y, p.fr, p.dir, p.shield, p.state);
+    drawEnemy('exc', e.x, e.y, e.dir);
+    drawPan(p.x, p.y, p.dir, p.shield);
 
-    // UI
-    bar(10, 10, 150, 20, p.hp, p.maxhp, '#0f0'); txt('HP', 15, 25, 8, '#fff');
-    bar(10, 35, 150, 10, p.en, p.maxen, '#0af'); txt('EN', 15, 43, 6, '#fff');
-    txts('PUNTOS: '+score, W/2, 25, 8, '#fff');
-    txts('BOLSOS: '+bags+'/'+BAGS, W/2, 50, 8, '#ffd700');
+    // UI - BARRA JUGADOR (Izquierda)
+    bar(10, 15, 140, 18, p.hp, p.maxhp, '#0f0'); 
+    txt('PANIFICADOR', 10, 10, 7, '#fff');
+
+    // UI - BARRA MALVADO (Derecha - ¡NUEVA!)
+    bar(W-150, 15, 140, 18, e.hp, e.maxhp, '#f00');
+    txt('MALVADO', W-150, 10, 7, '#f00', 'left');
+
+    txts('PUNTOS: '+score, W/2, 50, 8, '#fff');
+    txts('BOLSOS: '+bags+'/'+BAGS, W/2, 70, 8, '#ffd700');
 
     btn(SHB.x, SHB.y, SHB.w, SHB.h, 'ESCUDO', '#128');
     btn(FIRE.x, FIRE.y, FIRE.w, FIRE.h, 'LANZAR', '#840');
 
-    if(win) { fr(0,0,W,H,'rgba(0,0,0,0.7)'); txts('¡NIVEL SUPERADO!', W/2, H/2, 12, '#ffd700'); }
-    if(over) { fr(0,0,W,H,'rgba(0,0,0,0.7)'); txts('GAME OVER', W/2, H/2, 12, '#f00'); }
+    if(win) { fr(0,0,W,H,'rgba(0,0,0,0.8)'); txts('¡VICTORIA!', W/2, H/2, 15, '#ffd700'); }
+    if(over) { fr(0,0,W,H,'rgba(0,0,0,0.8)'); txts('GAME OVER', W/2, H/2, 15, '#f00'); }
 }
 
 function loop(){
-    // Solo inicia si las imágenes críticas cargan
-    if(!ok('bg') || !ok('pan')){
-        ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
-        txts('CARGANDO ASSETS...', W/2, H/2, 10, '#ffd700');
-        requestAnimationFrame(loop); return;
-    }
     update(); draw(); _jd=false;
     requestAnimationFrame(loop);
 }
